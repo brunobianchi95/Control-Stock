@@ -1,5 +1,5 @@
 from flask import Flask, request
-import json
+import index
 import mysql.connector
 
 app = Flask(__name__)
@@ -19,7 +19,6 @@ def hello_world():
     password = request.json["password"]
     email = request.json["email"]
     
-
     with connection.cursor() as cursor:
         # Create a new record
         sql = "INSERT INTO `users` (`email`, `password`, `first_name`, `last_name`, `admin`) VALUES (%s, %s, %s, %s, %s)"

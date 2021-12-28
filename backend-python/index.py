@@ -28,7 +28,7 @@ TABLES = {}
 TABLES['users'] = (
     "CREATE TABLE `users` ("
     "  `ID` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `email` TEXT UNIQUE NOT NULL,"
+    "  `email` varchar(100) UNIQUE NOT NULL,"
     "  `password` TEXT NOT NULL,"
     "  `first_name` TEXT NOT NULL,"
     "  `last_name` TEXT NOT NULL,"
