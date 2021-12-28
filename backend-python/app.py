@@ -13,7 +13,7 @@ connection = mysql.connector.connect(
 )
 
 @app.route("/api/signup", methods=["POST"])
-def hello_world():
+def register():
     firstName = request.json["firstName"]
     lastName = request.json["lastName"]
     password = request.json["password"]
