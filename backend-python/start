@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Meterse en el environment virtual de python
+. venv/bin/activate
+
+# Ponerlo en modo development
+export FLASK_ENV=development
+
+# arrancar la aplicacion
+flask run
