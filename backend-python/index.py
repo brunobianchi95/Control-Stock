@@ -39,19 +39,20 @@ TABLES['users'] = (
 TABLES['stock'] = (
     "CREATE TABLE `stock` ("
     "  `COD` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `Bebida` varchar(14) NOT NULL,"
+    "  `Producto` varchar(14) NOT NULL,"
     "  `Brand` varchar(16) NOT NULL,"
     "  `Cant` INT NOT NULL,"
+    "  `Precio` INT NOT NULL,"
     "  PRIMARY KEY (`COD`)"
     ") ENGINE=InnoDB")
 
 TABLES['ventas'] = (
     "CREATE TABLE `ventas` ("
     "  `NO_V` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `ID` int(11) NOT NULL,"
-    "  `COD` int(11) NOT NULL,"
+    "  `user_ID` int(11) NOT NULL,"
+    "  `stock_COD` int(11) NOT NULL,"
     "  `Cant` INT NOT NULL,"
-    "  PRIMARY KEY (`NO_V`), KEY `ID` (`ID`), KEY `COD` (`COD`)"
+    "  PRIMARY KEY (`NO_V`), KEY `ID` (`user_ID`), KEY `COD` (`stock_COD`)"
     ") ENGINE=InnoDB")
 
 
