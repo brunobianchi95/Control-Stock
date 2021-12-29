@@ -1,7 +1,7 @@
 from flask import Flask, request
 import index
 import mysql.connector
-from flask import login_user
+from flask_login import LoginManager
 
 app = Flask(__name__)
 
@@ -36,5 +36,6 @@ def register():
         result = cursor.fetchone()
         return {"id": result[0], "email": result[1]}
 
+
 @app.route("/api/login", methods=["POST"])
-def login():    
+def login():
