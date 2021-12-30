@@ -133,3 +133,26 @@ def addProduct(COD):
 
       cursor.close()
       return {"error": "no sos admin"}, 403
+
+
+#VENDER PRODUCTO#
+@app.route("/api/sell/<COD>", methods=["POST"])
+def sellProduct(COD):
+    cantidad = request.json["cantidad"]
+    precioV = request.json["precioV"]
+    stock_COD = COD
+
+    with connection.cursor() as cursor:
+      query = "SELECT `cantidad` FROM `stock` WHERE `COD` = %s" 
+      cursor.execute(query, (COD,))
+      existencia = cursor.fetchone()
+      venta = int(existencia[0]) - int(cantidad)
+      query = "UPDATE `stock` SET `cantidad`=%s WHERE `COD`=%s"
+      cursor.execute(query, (venta, COD))
+      result = cursor.fetchone()
+      connection.commit()
+      return {"mensaje": "venta ok"}
+    
+    
+
+
