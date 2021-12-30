@@ -2,7 +2,7 @@ from flask import Flask, request
 import index
 import utils
 import mysql.connector
-from flask_login import LoginManager
+#from flask_login import LoginManager
 
 app = Flask(__name__)
 
@@ -13,7 +13,7 @@ connection = mysql.connector.connect(
   user="root",
   password="catalina"
 )
-
+#SIGNUP#
 @app.route("/api/signup", methods=["POST"])
 def register():
     firstName = request.json["firstName"]
@@ -37,7 +37,22 @@ def register():
         result = cursor.fetchone()
         return {"id": result[0], "email": result[1]}
 
+#LOGIN#
+@app.route("/api/login", methods=["POST"])
+def login():
+  email = request.json["email"]
+  password = request.json["password"]
+  with connection.cursor() as cursor:
+    query = "SELECT `id`, `email`, `password` FROM `users` WHERE `email`=%s AND `password`=%s"
+    cursor.execute(query, (email, password))
+    result = cursor.fetchone()
+    if result[1] == email and result[2] == password:
+      token = utils.encodeToken(result[0])
+      return {"token":token}
+    return {"mensaje":"Usuario o password incorrecto"}, 400
 
+
+#DELETE USER#
 @app.route("/api/admin/deleteUser/<id>", methods=["DELETE"])
 def deleteUser(id):
   with connection.cursor() as cursor:
