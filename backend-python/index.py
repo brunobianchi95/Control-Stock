@@ -2,7 +2,7 @@ from flask import Flask
 
 index = Flask(__name__)
 
-############CREACION DEL DB############
+## CREACION DE DB ##
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -27,43 +27,63 @@ def create_database(cursor):
 TABLES = {}
 TABLES['users'] = (
     "CREATE TABLE `users` ("
-    "  `ID` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
     "  `email` varchar(100) UNIQUE NOT NULL,"
     "  `password` TEXT NOT NULL,"
     "  `first_name` TEXT NOT NULL,"
     "  `last_name` TEXT NOT NULL,"
     "  `admin` BOOLEAN NOT NULL,"
-    "  PRIMARY KEY (`ID`)"
+    "  PRIMARY KEY (`id`)"
     ") ENGINE=InnoDB")
 
 TABLES['stock'] = (
     "CREATE TABLE `stock` ("
-    "  `COD` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `cod` int(11) NOT NULL AUTO_INCREMENT,"
     "  `producto` TEXT NOT NULL,"
     "  `marca` TEXT NOT NULL,"
     "  `cantidad` INT NOT NULL,"
-    "  PRIMARY KEY (`COD`)"
+    "  `precio_c` INT NOT NULL,"
+    "  `precio_v` INT NOT NULL,"
+    "  PRIMARY KEY (`cod`)"
     ") ENGINE=InnoDB")
 
 TABLES['compras'] = (
     "CREATE TABLE `compras` ("
-    "  `NO_C` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `user_ID` int(11) NOT NULL,"
-    "  `stock_COD` int(11) NOT NULL,"
-    "  `proveedor` TEXT NOT NULL,"
+    "  `no_c` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `user_id` int(11) NOT NULL,"
+    "  `stock_cod` int(11) NOT NULL,"
+    "  `producto` TEXT NOT NULL,"
+    "  `marca` TEXT NOT NULL,"
+    "  `proveedor` varchar(100) NOT NULL,"
+    #"  `cuit` INT UNIQUE NOT NULL,"
     "  `cantidad` INT NOT NULL,"
-    "  `precioC` INT NOT NULL,"
-    "  PRIMARY KEY (`NO_C`), KEY `ID` (`user_ID`), KEY `COD` (`stock_COD`)"
+    "  `precio_c` INT NOT NULL,"
+    "  PRIMARY KEY (`no_c`), KEY `id` (`user_id`), KEY `cod` (`stock_cod`)"
     ") ENGINE=InnoDB")
 
 TABLES['ventas'] = (
     "CREATE TABLE `ventas` ("
-    "  `NO_V` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `user_ID` int(11) NOT NULL,"
-    "  `stock_COD` int(11) NOT NULL,"
+    "  `no_v` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `user_id` int(11) NOT NULL,"
+    "  `stock_cod` int(11) NOT NULL,"
+    "  `producto` TEXT NOT NULL,"
+    "  `marca` TEXT NOT NULL,"
+    "  `cuit_cliente` TEXT NOT NULL,"
     "  `cantidad` INT NOT NULL,"
-    "  `precioV` INT NOT NULL,"
-    "  PRIMARY KEY (`NO_V`), KEY `ID` (`user_ID`), KEY `COD` (`stock_COD`)"
+    "  `precio_v` INT NOT NULL,"
+    "  PRIMARY KEY (`no_v`), KEY `id` (`user_id`), KEY `cod` (`stock_cod`)"
+    ") ENGINE=InnoDB")
+
+TABLES['cliente'] = (
+    "CREATE TABLE `cliente` ("
+    "  `client_id` int(11) NOT NULL AUTO_INCREMENT,"
+    "  `email` varchar(100) UNIQUE NOT NULL,"
+    "  `first_name` TEXT NOT NULL,"
+    "  `last_name` TEXT NOT NULL,"
+    "  `cuit` TEXT NOT NULL,"
+#    "  `compras` INT NOT NULL,"
+#    "  `gasto` INT NOT NULL,"
+    "  PRIMARY KEY (`client_id`)"
     ") ENGINE=InnoDB")
 
 
