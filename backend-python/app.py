@@ -38,6 +38,7 @@ def register():
 def login():
   email = request.json["email"]
   password = request.json["password"]
+
   with connection.cursor() as cursor:
     query = "SELECT `id`, `email`, `password` FROM `users` WHERE `email`=%s AND `password`=%s"
     cursor.execute(query, (email, password))
@@ -57,10 +58,10 @@ def deleteUser(id):
     if adminId == None:
       cursor.close()
       return {"error": "no estas logueado"}, 400
-    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE (`ID` = %s)", (adminId,))
+    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE (`id` = %s)", (adminId,))
     result = cursor.fetchone()
     if result[1] == True:
-      cursor.execute("DELETE FROM `users` WHERE (`ID` = %s)", (id,))
+      cursor.execute("DELETE FROM `users` WHERE (`id` = %s)", (id,))
       connection.commit()
       return {"message": "usuario eliminado"}
     cursor.close()
@@ -73,8 +74,9 @@ def regProduct():
   marca = request.json["marca"]
   cantidad = request.json["cantidad"]
   proveedor = request.json["proveedor"]
-  precioC = request.json["precioC"]    
-    
+  precio_c = int(request.json["precio_c"])    
+  precio_v = precio_c * 1.25 
+  
   with connection.cursor() as cursor:
     adminId = utils.getAuthId(request)
     adminId = int(adminId)
@@ -82,62 +84,53 @@ def regProduct():
     if adminId == None:
       cursor.close()
       return {"error": "no estas logueado"}, 400
-    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE (`ID` = %s)", (adminId,))
+    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE (`id` = %s)", (adminId,))
     resultAdmin = cursor.fetchone()
       
     if resultAdmin[1] == True:
-      query = "SELECT `COD` FROM `stock` WHERE (`producto`=%s AND `marca`=%s)"
+      query = "SELECT `cod` FROM `stock` WHERE (`producto`=%s AND `marca`=%s)"
       cursor.execute(query, (producto, marca))
       result = cursor.fetchone()
                 
       if result != None:
         COD = result[0]
         with connection.cursor() as cursor:
-          queryI = "INSERT INTO `compras` (`user_ID`, `stock_COD`, `proveedor`, `cantidad`, `precioC`) VALUES (%s, %s, %s,  %s, %s)"
-          cursor.execute(queryI, (adminId, COD, proveedor, cantidad, precioC))
-          queryS = "SELECT `cantidad` FROM `stock` WHERE `COD` = %s"
+          queryI = "INSERT INTO `compras` (`user_id`, `stock_cod`,`producto`, `marca`, `proveedor`, `cantidad`, `precio_c`) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+          cursor.execute(queryI, (adminId, COD, producto, marca, proveedor, cantidad, precio_c))
+          queryS = "SELECT `cantidad`, `precio_c`, `precio_v` FROM `stock` WHERE `cod` = %s"
           cursor.execute(queryS, (COD,))
-          existencia = cursor.fetchone()
-          suma = int(existencia[0]) + int(cantidad)
-          queryU = "UPDATE `stock` SET `cantidad`=%s WHERE `COD`=%s"
-          cursor.execute(queryU, (suma, COD))
+          prodSeleccionado = cursor.fetchone()
+          existencia = int(prodSeleccionado[0])
+          suma = existencia + int(cantidad)
+          queryU = "UPDATE `stock` SET `cantidad`= %s, `precio_c`= %s, `precio_v`= %s WHERE `cod`= %s"
+          cursor.execute(queryU, (suma, precio_c, precio_v, COD))
           connection.commit()
-          return {"mensaje": "compra ok"}
+          return {"mensaje": "compra numero: ok"}
       
-      queryI = "INSERT INTO `stock` (`producto`, `marca`, `cantidad`) VALUES (%s, %s, %s)"
-      cursor.execute(queryI, (producto, marca, cantidad))
+      queryI = "INSERT INTO `stock` (`producto`, `marca`, `cantidad`, `precio_c`, `precio_v`) VALUES (%s, %s, %s, %s, %s)"
+      cursor.execute(queryI, (producto, marca, cantidad, precio_c, precio_v))
+      queryS = "SELECT `cod` FROM `stock` WHERE `producto`=%s AND `marca`=%s"
+      cursor.execute(queryS, (producto, marca))
+      result = cursor.fetchone()
+      COD = result[0]
+      queryI = "INSERT INTO `compras` (`user_id`, `stock_cod`,`producto`, `marca`, `proveedor`, `cantidad`, `precio_c`)VALUES (%s, %s, %s, %s, %s, %s, %s)"
+      cursor.execute(queryI, (adminId, COD, producto, marca, proveedor, cantidad, precio_c))
       connection.commit()
-
-      with connection.cursor() as cursor:
-        queryS = "SELECT `COD` FROM `stock` WHERE `producto`=%s AND `marca`=%s"
-        cursor.execute(queryS, (producto, marca))
-        result = cursor.fetchone()
-        COD = result[0]
-        queryI = "INSERT INTO `compras` (`user_ID`, `stock_COD`, `proveedor`, `cantidad`,`precioC`) VALUES (%s, %s, %s,  %s, %s)"
-        cursor.execute(queryI, (adminId, COD, proveedor, cantidad, precioC))
-        connection.commit()
-
-        with connection.cursor() as cursor:
-          queryS = "SELECT `cantidad` FROM `stock` WHERE `COD` = %s" 
-          cursor.execute(queryS, (COD,))
-          existencia = cursor.fetchone()
-          suma = int(existencia[0]) + int(cantidad)
-          queryU = "UPDATE `stock` SET `cantidad`=%s WHERE `COD`=%s"
-          cursor.execute(queryU, (suma, COD))
-          connection.commit()
-          return {"mensaje": "compra ok"}
+      return {"mensaje": "compra y registro ok"}
   
-    cursor.close()
-    return {"error": "no sos admin"}, 403
+  cursor.close()
+  return {"error": "no sos admin"}, 403
 
 
 # ANULAR COMPRA #
 @app.route("/api/buy/cancel", methods=["DELETE"])
 def buyCancel():
-  userID = request.json["user_ID"]
-  stockCOD = request.json["stock_COD"]
-  cantidadComprada = int(request.json["cantidad"])
-  proveedor = request.json["proveedor"]  
+  user_id = request.json["user_id"]
+  producto = request.json["producto"]
+  marca = request.json["marca"]
+  cantidad_comprada = int(request.json["cantidad"])
+  proveedor = request.json["proveedor"]
+  precio_c = int(request.json["precio_c"])
 
   with connection.cursor() as cursor:
     adminId = utils.getAuthId(request)
@@ -145,27 +138,32 @@ def buyCancel():
     if adminId == None:
       cursor.close()
       return {"error": "no estas logueado"}, 400
-    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE `ID` = %s", (adminId,))
+    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE `id` = %s", (adminId,))
     result = cursor.fetchone()
     if result[1] == True:
-      selectCompra = "SELECT `NO_C` FROM `compras` WHERE `user_ID` = %s AND `stock_COD` = %s AND `cantidad` = %s AND `proveedor` = %s"
-      cursor.execute(selectCompra, (userID, stockCOD, cantidadComprada, proveedor))
-      compra = cursor.fetchone()
+      selectCompra = "SELECT `no_c`,`stock_cod`, `cantidad` FROM `compras` WHERE `user_id` = %s AND `producto` = %s AND `marca` = %s AND `cantidad` = %s AND `proveedor` = %s AND `precio_c` = %s"
+      cursor.execute(selectCompra, (user_id, producto, marca, cantidad_comprada, proveedor, precio_c))
+      compra = cursor.fetchall()
+      print(compra)
       NO_C = compra[0]
-      selectProd = "SELECT `cantidad` FROM `stock` WHERE `COD` = %s"
-      cursor.execute(selectProd, (stockCOD, ))
+      stock_cod = compra[1]
+      cantidad = compra[2]
+      selectProd = "SELECT `cantidad` FROM `stock` WHERE `cod` = %s"
+      cursor.execute(selectProd, (stock_cod, ))
       prod = cursor.fetchone()
       cantidadStock = int(prod[0])
       connection.commit()
 
       with connection.cursor() as cursor:
-        updateStock = "UPDATE `stock` SET `cantidad`=%s WHERE `COD`=%s"
-        refund = cantidadStock - cantidadComprada
-        cursor.execute(updateStock, (refund, stockCOD))
-        deleteCompra = "DELETE FROM `compras` WHERE `NO_C` = %s"
-        cursor.execute(deleteCompra, (NO_C,))
-        connection.commit()
-        return {"message": "compra eliminada"}
+        if cantidad_comprada == cantidad:
+          updateStock = "UPDATE `stock` SET `cantidad`=%s WHERE `cod`=%s"
+          refund = cantidadStock - cantidad_comprada
+          cursor.execute(updateStock, (refund, stock_cod))
+          deleteCompra = "DELETE FROM `compras` WHERE `no_c` = %s"
+          cursor.execute(deleteCompra, (NO_C,))
+          connection.commit()
+          return {"message": "compra eliminada"}
+        return {"error": "no coinciden las cantidades"}
 
     cursor.close()
     return {"error": "no sos admin"}, 403
@@ -177,27 +175,49 @@ def sellProduct():
   producto = request.json["producto"]
   marca = request.json["marca"]
   cantidad = int(request.json["cantidad"])
-  precioV = request.json["precioV"]
-    
+  
+  # cliente
+  email = request.json["email"]
+  first_name = request.json["first_name"]
+  last_name = request.json["last_name"]
+  cuit = int(request.json["cuit"])
+      
   with connection.cursor() as cursor:
     userId = utils.getAuthId(request)
 
     if userId == None:
       cursor.close()
       return {"error": "no estas logueado"}, 400
-    cursor.execute("SELECT `id` FROM `users` WHERE (`ID` = %s)", (userId,))
+    cursor.execute("SELECT `id` FROM `users` WHERE (`id` = %s)", (userId,))
     resultUser = cursor.fetchone()
-    query = "SELECT `COD`, `cantidad` FROM `stock` WHERE `producto`= %s AND `marca` = %s" 
+    query = "SELECT `cod`, `cantidad`, `precio_v` FROM `stock` WHERE `producto`= %s AND `marca` = %s" 
     cursor.execute(query, (producto, marca))
     result = cursor.fetchone()
     COD = result[0]
     existencia = int(result[1])
+    precio_v = int(result[2])
 
     if existencia >= cantidad:
-      query = "INSERT INTO `ventas` (`user_ID`, `stock_COD`, `cantidad`, `precioV`) VALUES (%s, %s, %s, %s)"
-      cursor.execute(query, (resultUser[0], COD, cantidad, precioV))    
+      query = "SELECT `client_id` FROM `cliente` WHERE `email` = %s" 
+      cursor.execute(query, (email,))
+      cliente = cursor.fetchone()
+      
+      if cliente != None:
+        query = "INSERT INTO `ventas` (`user_id`, `stock_cod`, `producto`, `marca`, `cuit_cliente`, `cantidad`, `precio_v`) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        cursor.execute(query, (resultUser[0], COD, producto, marca, cuit, cantidad, precio_v))    
+        venta = existencia - cantidad
+        update = "UPDATE `stock` SET `cantidad`=%s WHERE `cod`=%s"
+        cursor.execute(update, (venta, COD))
+        connection.commit()
+        return{"mensaje":"ya esta registrado, venta ok"} 
+
+      register = "INSERT INTO `cliente` (`email`, `first_name`, `last_name`, `cuit`) VALUES (%s, %s, %s, %s)"
+      cursor.execute(register, (email, first_name, last_name, cuit))    
+
+      query = "INSERT INTO `ventas` (`user_id`, `stock_cod`, `producto`, `marca`, `cuit_cliente`, `cantidad`, `precio_v`) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+      cursor.execute(query, (resultUser[0], COD, producto, marca, cuit, cantidad, precio_v))    
       venta = existencia - cantidad
-      update = "UPDATE `stock` SET `cantidad`=%s WHERE `COD`=%s"
+      update = "UPDATE `stock` SET `cantidad`=%s WHERE `cod`=%s"
       cursor.execute(update, (venta, COD))
       connection.commit()
       return {"mensaje": "venta ok"}
@@ -209,9 +229,13 @@ def sellProduct():
 # ANULAR VENTA #
 @app.route("/api/sell/cancel", methods=["DELETE"])
 def sellCancel():
-  userID = request.json["user_ID"]
-  stockCOD = request.json["stock_COD"]
-  cantidadVendida = int(request.json["cantidad"])  
+  user_id = request.json["user_id"]
+  stock_cod = request.json["stock_cod"]
+  producto = request.json["producto"]
+  marca = request.json["marca"]
+  cuit_cliente = request.json["cuit_cliente"]
+  cantidad_vendida = int(request.json["cantidad"])  
+  precio_v = request.json["precio_v"]
 
   with connection.cursor() as cursor:
     adminId = utils.getAuthId(request)
@@ -219,27 +243,50 @@ def sellCancel():
     if adminId == None:
       cursor.close()
       return {"error": "no estas logueado"}, 400
-    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE `ID` = %s", (adminId,))
+    cursor.execute("SELECT `id`, `admin` FROM `users` WHERE `id` = %s", (adminId,))
     result = cursor.fetchone()
     if result[1] == True:
-      selectVenta = "SELECT `NO_V` FROM `ventas` WHERE `user_ID` = %s AND `stock_COD` = %s AND `cantidad` = %s"
-      cursor.execute(selectVenta, (userID, stockCOD, cantidadVendida))
+      selectVenta = "SELECT `no_v`, `cantidad` FROM `ventas` WHERE `user_id` = %s AND `stock_cod` = %s `producto` = %s AND `marca` = %s AND `cuit_cliente`=%s AND `cantidad` = %s AND `precio_v`=%s"
+      cursor.execute(selectVenta, (user_id, stock_cod,producto, marca, cuit_cliente, cantidad_vendida, precio_v))
       venta = cursor.fetchone()
       NO_V = venta[0]
-      selectProd = "SELECT `cantidad` FROM `stock` WHERE `COD` = %s"
-      cursor.execute(selectProd, (stockCOD, ))
+      cantidad = venta[1]
+      selectProd = "SELECT `cantidad` FROM `stock` WHERE `cod` = %s"
+      cursor.execute(selectProd, (stock_cod, ))
       prod = cursor.fetchone()
       cantidadStock = int(prod[0])
       connection.commit()
 
       with connection.cursor() as cursor:
-        updateStock = "UPDATE `stock` SET `cantidad`=%s WHERE `COD`=%s"
-        refund = cantidadStock + cantidadVendida
-        cursor.execute(updateStock, (refund, stockCOD))
-        deleteVenta = "DELETE FROM `ventas` WHERE `NO_V` = %s"
-        cursor.execute(deleteVenta, (NO_V,))
-        connection.commit()
-        return {"message": "venta eliminada"}
+        if cantidad_vendida == cantidad: 
+          updateStock = "UPDATE `stock` SET `cantidad`=%s WHERE `cod`=%s"
+          refund = cantidadStock + cantidad_vendida
+          cursor.execute(updateStock, (refund, stock_cod))
+          deleteVenta = "DELETE FROM `ventas` WHERE `no_v` = %s"
+          cursor.execute(deleteVenta, (NO_V,))
+          connection.commit()
+          return {"message": "venta eliminada"}
+        return {"error":"no coinciden las cantidades"}
 
     cursor.close()
     return {"error": "no sos admin"}, 403
+
+
+# OBTENER LISTA PRODUCTOS #
+@app.route("/api/products", methods=["GET"])
+def getProduct():
+     
+  with connection.cursor() as cursor:
+    userId = utils.getAuthId(request)
+
+    if userId == None:
+      cursor.close()
+      return {"error": "no estas logueado"}, 400
+    cursor.execute("SELECT `id` FROM `users` WHERE (`id` = %s)", (userId,))
+    resultUser = cursor.fetchone()
+
+    query = "SELECT `cod`, `producto`, `marca`, `cantidad`, `precio_c`, `precio_v` FROM `stock`" 
+    cursor.execute(query, )
+    result = cursor.fetchall()
+    print(result)
+    return {"lista": "productos"}
