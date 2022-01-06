@@ -26,64 +26,58 @@ def create_database(cursor):
 
 TABLES = {}
 TABLES['users'] = (
-    "CREATE TABLE `users` ("
-    "  `id` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `email` varchar(100) UNIQUE NOT NULL,"
-    "  `password` TEXT NOT NULL,"
-    "  `first_name` TEXT NOT NULL,"
-    "  `last_name` TEXT NOT NULL,"
-    "  `admin` BOOLEAN NOT NULL,"
-    "  PRIMARY KEY (`id`)"
+    "CREATE TABLE users ("
+    "  user_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  email varchar(100) UNIQUE NOT NULL,"
+    "  password TEXT NOT NULL,"
+    "  first_name TEXT NOT NULL,"
+    "  last_name TEXT NOT NULL,"
+    "  admin BOOLEAN NOT NULL,"
+    "  PRIMARY KEY (user_id)"
     ") ENGINE=InnoDB")
 
-TABLES['stock'] = (
-    "CREATE TABLE `stock` ("
-    "  `cod` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `producto` TEXT NOT NULL,"
-    "  `marca` TEXT NOT NULL,"
-    "  `cantidad` INT NOT NULL,"
-    "  `precio_c` INT NOT NULL,"
-    "  `precio_v` INT NOT NULL,"
-    "  PRIMARY KEY (`cod`)"
+TABLES['productos'] = (
+    "CREATE TABLE productos ("
+    "  producto_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  compra_id INT REFERENCES compras(compra_id) ON DELETE SET NULL,"
+    "  producto TEXT NOT NULL,"
+    "  marca TEXT NOT NULL,"
+    "  stock INT NOT NULL,"
+    "  PRIMARY KEY (producto_id)"
     ") ENGINE=InnoDB")
 
 TABLES['compras'] = (
-    "CREATE TABLE `compras` ("
-    "  `no_c` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `user_id` int(11) NOT NULL,"
-    "  `stock_cod` int(11) NOT NULL,"
-    "  `producto` TEXT NOT NULL,"
-    "  `marca` TEXT NOT NULL,"
-    "  `proveedor` varchar(100) NOT NULL,"
-    #"  `cuit` INT UNIQUE NOT NULL,"
-    "  `cantidad` INT NOT NULL,"
-    "  `precio_c` INT NOT NULL,"
-    "  PRIMARY KEY (`no_c`), KEY `id` (`user_id`), KEY `cod` (`stock_cod`)"
+    "CREATE TABLE compras ("
+    "  compra_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  user_id INT REFERENCES users(user_id) ON DELETE SET NULL,"
+    "  producto_id INT REFERENCES productos(producto_id) ON DELETE SET NULL,"
+    "  proveedor varchar(100) NOT NULL,"
+    "  cantidad INT NOT NULL," 
+    "  precio_c INT NOT NULL,"
+    "  tiempo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+    "  PRIMARY KEY (compra_id) "
     ") ENGINE=InnoDB")
 
 TABLES['ventas'] = (
-    "CREATE TABLE `ventas` ("
-    "  `no_v` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `user_id` int(11) NOT NULL,"
-    "  `stock_cod` int(11) NOT NULL,"
-    "  `producto` TEXT NOT NULL,"
-    "  `marca` TEXT NOT NULL,"
-    "  `cuit_cliente` TEXT NOT NULL,"
-    "  `cantidad` INT NOT NULL,"
-    "  `precio_v` INT NOT NULL,"
-    "  PRIMARY KEY (`no_v`), KEY `id` (`user_id`), KEY `cod` (`stock_cod`)"
+    "CREATE TABLE ventas ("
+    "  venta_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  user_id INT REFERENCES users(user_id) ON DELETE SET NULL,"
+    "  producto_id INT REFERENCES productos(producto_id) ON DELETE SET NULL,"
+    "  client_id INT REFERENCES users(client_) ON DELETE SET NULL,"
+    "  cantidad INT NOT NULL," 
+    "  precio_v INT NOT NULL," 
+    "  tiempo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+    "  PRIMARY KEY (venta_id) "
     ") ENGINE=InnoDB")
 
-TABLES['cliente'] = (
-    "CREATE TABLE `cliente` ("
-    "  `client_id` int(11) NOT NULL AUTO_INCREMENT,"
-    "  `email` varchar(100) UNIQUE NOT NULL,"
-    "  `first_name` TEXT NOT NULL,"
-    "  `last_name` TEXT NOT NULL,"
-    "  `cuit` TEXT NOT NULL,"
-#    "  `compras` INT NOT NULL,"
-#    "  `gasto` INT NOT NULL,"
-    "  PRIMARY KEY (`client_id`)"
+TABLES['clientes'] = (
+    "CREATE TABLE clientes ("
+    "  client_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  email varchar(100) UNIQUE NOT NULL,"
+    "  first_name TEXT NOT NULL,"
+    "  last_name TEXT NOT NULL,"
+    "  cuit TEXT NOT NULL,"
+    "  PRIMARY KEY (client_id)"
     ") ENGINE=InnoDB")
 
 
