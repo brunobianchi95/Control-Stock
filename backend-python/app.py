@@ -165,18 +165,15 @@ def buyCancel(n):
     return {"message": "compra eliminada"}
  
  
-
 # VENDER PRODUCTO #
 @app.route("/api/sell", methods=["POST"])
 def sellProduct():
-  
-  producto_id = request.json["producto_id"]
-  cantidad = int(request.json["cantidad"])
-  
+  lista_productos = request.json["lista"]
+      
   # cliente
   email = request.json["email"]
 
- # Se fija si existe el cliente y si no existe lo crea
+  # Se fija si existe el cliente y si no existe lo crea
   client_id = None
 
   with connection.cursor() as cursor:
@@ -201,29 +198,40 @@ def sellProduct():
     return {"error": "no estas logueado"}, 400
 
   with connection.cursor() as cursor:
-    query = "SELECT stock, precio_c FROM productos INNER JOIN compras ON productos.compra_id = compras.compra_id WHERE productos.producto_id= %s" 
-    cursor.execute(query, (producto_id, ))
-    result = cursor.fetchone()
 
-    if result == None:
-      return {"mensaje":"producto no encontrado"}
+    query = "INSERT INTO ventas (user_id, client_id) VALUES (%s, %s)"
+    cursor.execute(query, (userId, client_id)) 
+    venta_id = cursor.lastrowid
 
-    existencia = int(result[0])
-    precio_v = int(result[1]) * 1.25
+    for row in lista_productos:
+      producto_id = row["producto_id"]
+      cantidad = int(row["cantidad"])
 
-    if existencia < cantidad:
-      cursor.close()
-      return {"error": "no hay stock"}, 403
+      query = "SELECT stock, precio_c FROM productos INNER JOIN compras ON productos.compra_id = compras.compra_id WHERE productos.producto_id= %s" 
+      cursor.execute(query, (producto_id, ))
+      result = cursor.fetchone()
+      
+      if result == None:
+        connection.rollback()
+        return {"mensaje":"producto no encontrado"}
+    
+      existencia = int(result[0])
+      precio_v = int(result[1]) * 1.25
+      venta = existencia - cantidad
 
-    query = "INSERT INTO ventas (user_id, producto_id, client_id, cantidad, precio_v) VALUES (%s, %s, %s, %s, %s)"
-    cursor.execute(query, (userId, producto_id, client_id, cantidad, precio_v))    
-    venta = existencia - cantidad
-    update = "UPDATE productos SET stock=%s WHERE producto_id=%s"
-    cursor.execute(update, (venta, producto_id))
+      if existencia < cantidad:
+        connection.rollback()
+        return {"error": "no hay stock"}, 403
+
+      query = "INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_v) VALUES (%s, %s, %s, %s)"
+      cursor.execute(query, (venta_id, producto_id, cantidad, precio_v)) 
+      
+      update = "UPDATE productos SET stock=%s WHERE producto_id=%s"
+      cursor.execute(update, (venta, producto_id))
+    
     connection.commit()
-    return {"mensaje": "venta ok"}
-
-
+    return jsonify({"mensaje": "venta ok", "venta_id": venta_id, "detalle": lista_productos})
+   
 
 # ANULAR VENTA #
 @app.route("/api/sell/cancel/<n>", methods=["DELETE"])

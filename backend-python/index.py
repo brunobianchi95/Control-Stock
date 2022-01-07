@@ -69,10 +69,12 @@ TABLES['ventas'] = (
 
 TABLES['detalle_ventas'] = (
     "CREATE TABLE detalle_ventas ("
+    "  numero_id int(11) NOT NULL AUTO_INCREMENT,"
     "  venta_id INT REFERENCES ventas(venta_id) ON DELETE SET NULL,"
     "  producto_id INT REFERENCES productos(producto_id) ON DELETE SET NULL,"
     "  cantidad INT NOT NULL," 
-    "  precio_v INT NOT NULL," 
+    "  precio_v INT NOT NULL,"
+    "  PRIMARY KEY (numero_id) "
     ") ENGINE=InnoDB")
 
 TABLES['clientes'] = (
