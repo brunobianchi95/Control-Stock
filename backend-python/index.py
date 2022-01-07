@@ -62,12 +62,17 @@ TABLES['ventas'] = (
     "CREATE TABLE ventas ("
     "  venta_id int(11) NOT NULL AUTO_INCREMENT,"
     "  user_id INT REFERENCES users(user_id) ON DELETE SET NULL,"
-    "  producto_id INT REFERENCES productos(producto_id) ON DELETE SET NULL,"
     "  client_id INT REFERENCES users(client_) ON DELETE SET NULL,"
-    "  cantidad INT NOT NULL," 
-    "  precio_v INT NOT NULL," 
     "  tiempo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
     "  PRIMARY KEY (venta_id) "
+    ") ENGINE=InnoDB")
+
+TABLES['detalle_ventas'] = (
+    "CREATE TABLE detalle_ventas ("
+    "  venta_id INT REFERENCES ventas(venta_id) ON DELETE SET NULL,"
+    "  producto_id INT REFERENCES productos(producto_id) ON DELETE SET NULL,"
+    "  cantidad INT NOT NULL," 
+    "  precio_v INT NOT NULL," 
     ") ENGINE=InnoDB")
 
 TABLES['clientes'] = (

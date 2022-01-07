@@ -143,23 +143,23 @@ def buyCancel(n):
     return err
 
  with connection.cursor() as cursor:
-  selectCompra = "SELECT stock_cod, cantidad FROM compras WHERE no_c=%s"
+  selectCompra = "SELECT producto_id, cantidad FROM compras WHERE compra_id=%s"
   cursor.execute(selectCompra, (n,))
   compra = cursor.fetchone()
-  stock_cod = compra[0]
+  producto_id = compra[0]
   cantidad = compra[1]
 
-  selectProd = "SELECT cantidad FROM stock WHERE cod = %s"
-  cursor.execute(selectProd, (stock_cod, ))
+  selectProd = "SELECT stock FROM productos WHERE producto_id = %s"
+  cursor.execute(selectProd, (producto_id, ))
   prod = cursor.fetchone()
   cantidadStock = int(prod[0])
   connection.commit()
 
   with connection.cursor() as cursor:
-    updateStock = "UPDATE stock SET cantidad=%s WHERE cod=%s"
+    updateStock = "UPDATE productos SET stock=%s WHERE producto_id=%s"
     refund = cantidadStock - cantidad
-    cursor.execute(updateStock, (refund, stock_cod))
-    deleteCompra = "DELETE FROM compras WHERE no_c = %s"
+    cursor.execute(updateStock, (refund, producto_id))
+    deleteCompra = "DELETE FROM compras WHERE compra_id = %s"
     cursor.execute(deleteCompra, (n,))
     connection.commit()
     return {"message": "compra eliminada"}
@@ -170,12 +170,11 @@ def buyCancel(n):
 @app.route("/api/sell", methods=["POST"])
 def sellProduct():
   
-  producto_id = request.json["product_id"]
+  producto_id = request.json["producto_id"]
   cantidad = int(request.json["cantidad"])
   
   # cliente
   email = request.json["email"]
-
 
  # Se fija si existe el cliente y si no existe lo crea
   client_id = None
@@ -202,16 +201,15 @@ def sellProduct():
     return {"error": "no estas logueado"}, 400
 
   with connection.cursor() as cursor:
-    query = "SELECT productos.producto_id, stock, precio_c FROM productos INNER JOIN compras ON productos.compra_id = compras.compra_id WHERE producto_id= %s" 
+    query = "SELECT stock, precio_c FROM productos INNER JOIN compras ON productos.compra_id = compras.compra_id WHERE productos.producto_id= %s" 
     cursor.execute(query, (producto_id, ))
     result = cursor.fetchone()
 
     if result == None:
       return {"mensaje":"producto no encontrado"}
 
-    producto_id = result[0]
-    existencia = int(result[1])
-    precio_v = int(result[2]) * 1.25
+    existencia = int(result[0])
+    precio_v = int(result[1]) * 1.25
 
     if existencia < cantidad:
       cursor.close()
@@ -228,49 +226,33 @@ def sellProduct():
 
 
 # ANULAR VENTA #
-@app.route("/api/sell/cancel", methods=["DELETE"])
-def sellCancel():
-  user_id = request.json["user_id"]
-  stock_cod = request.json["stock_cod"]
-  producto = request.json["producto"]
-  marca = request.json["marca"]
-  cuit_cliente = request.json["cuit_cliente"]
-  cantidad_vendida = int(request.json["cantidad"])  
-  precio_v = request.json["precio_v"]
+@app.route("/api/sell/cancel/<n>", methods=["DELETE"])
+def sellCancel(n):
+  
+  _, admin, err = isAdmin(connection, request) 
+  if admin == False:
+    return err
 
   with connection.cursor() as cursor:
-    adminId = utils.getAuthId(request)
-    adminId = int(adminId)
-    if adminId == None:
-      cursor.close()
-      return {"error": "no estas logueado"}, 400
-    cursor.execute("SELECT id, admin FROM users WHERE id = %s", (adminId,))
-    result = cursor.fetchone()
-    if result[1] == True:
-      selectVenta = "SELECT no_v, cantidad FROM ventas WHERE user_id = %s AND stock_cod = %s producto = %s AND marca = %s AND cuit_cliente=%s AND cantidad = %s AND precio_v=%s"
-      cursor.execute(selectVenta, (user_id, stock_cod,producto, marca, cuit_cliente, cantidad_vendida, precio_v))
-      venta = cursor.fetchone()
-      NO_V = venta[0]
-      cantidad = venta[1]
-      selectProd = "SELECT cantidad FROM stock WHERE cod = %s"
-      cursor.execute(selectProd, (stock_cod, ))
-      prod = cursor.fetchone()
-      cantidadStock = int(prod[0])
+    selectVenta = "SELECT producto_id, cantidad FROM ventas WHERE venta_id = %s"
+    cursor.execute(selectVenta, (n,))
+    venta = cursor.fetchone()
+    producto_id = venta[0]
+    cantidad = venta[1]
+    selectProd = "SELECT stock FROM productos WHERE producto_id = %s"
+    cursor.execute(selectProd, (producto_id, ))
+    prod = cursor.fetchone()
+    cantidadStock = int(prod[0])
+    connection.commit()
+
+    with connection.cursor() as cursor:
+      updateStock = "UPDATE productos SET stock=%s WHERE producto_id=%s"
+      refund = cantidadStock + cantidad
+      cursor.execute(updateStock, (refund, producto_id))
+      deleteVenta = "DELETE FROM ventas WHERE venta_id = %s"
+      cursor.execute(deleteVenta, (n,))
       connection.commit()
-
-      with connection.cursor() as cursor:
-        if cantidad_vendida == cantidad: 
-          updateStock = "UPDATE stock SET cantidad=%s WHERE cod=%s"
-          refund = cantidadStock + cantidad_vendida
-          cursor.execute(updateStock, (refund, stock_cod))
-          deleteVenta = "DELETE FROM ventas WHERE no_v = %s"
-          cursor.execute(deleteVenta, (NO_V,))
-          connection.commit()
-          return {"message": "venta eliminada"}
-        return {"error":"no coinciden las cantidades"}
-
-    cursor.close()
-    return {"error": "no sos admin"}, 403
+      return {"message": "venta eliminada"}
 
 
 # OBTENER LISTA PRODUCTOS #
@@ -294,3 +276,26 @@ def getProduct():
       productos.append(product)
 
     return jsonify(productos)
+
+
+# HISTORIAL DE VENTA #
+@app.route("/api/sellHistory", methods=["GET"])
+def getSellHistory():
+     
+  with connection.cursor() as cursor:  
+    query = "SELECT tiempo AS fecha, ventas.user_id AS vendedor_id, first_name as vendedor, productos.producto_id, producto, marca, cantidad, precio_v, ventas.client_id, email AS cliente FROM productos INNER JOIN ventas ON productos.producto_id = ventas.producto_id INNER JOIN clientes ON clientes.client_id = ventas.client_id INNER JOIN users ON ventas.user_id = users.user_id" 
+    cursor.execute(query, )
+    result = cursor.fetchall()
+
+    # productos = []
+    # for row in result:
+    #   product = {
+    #     "producto_id": row[0],
+    #     "producto": row[1],
+    #     "marca": row[2],
+    #     "stock": row[3],
+    #     "precio_v": row[4] * 1.25
+    #   }
+    #   productos.append(product)
+
+    # return jsonify(productos)
