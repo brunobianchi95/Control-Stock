@@ -67,6 +67,7 @@ TABLES['ventas'] = (
     "  PRIMARY KEY (venta_id) "
     ") ENGINE=InnoDB")
 
+
 TABLES['detalle_ventas'] = (
     "CREATE TABLE detalle_ventas ("
     "  numero_id int(11) NOT NULL AUTO_INCREMENT,"
@@ -85,6 +86,15 @@ TABLES['clientes'] = (
     "  last_name TEXT NOT NULL,"
     "  cuit TEXT NOT NULL,"
     "  PRIMARY KEY (client_id)"
+    ") ENGINE=InnoDB")
+
+TABLES['notifications'] = (
+    "CREATE TABLE notifications ("
+    "  notification_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  user_id INT REFERENCES users(user_id) ON DELETE SET NULL,"
+    "  message varchar(100) UNIQUE NOT NULL,"
+    "  tiempo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+    "  PRIMARY KEY (notification_id)"
     ") ENGINE=InnoDB")
 
 

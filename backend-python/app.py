@@ -1,9 +1,15 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import index
 import utils
 import mysql.connector
+import logging
 
 app = Flask(__name__)
+CORS(app)
+logging.getLogger('flask_cors').level = logging.DEBUG
+
+
 
 # Connect to the database #
 connection = mysql.connector.connect(
@@ -291,19 +297,51 @@ def getProduct():
 def getSellHistory():
      
   with connection.cursor() as cursor:  
-    query = "SELECT tiempo AS fecha, ventas.user_id AS vendedor_id, first_name as vendedor, productos.producto_id, producto, marca, cantidad, precio_v, ventas.client_id, email AS cliente FROM productos INNER JOIN ventas ON productos.producto_id = ventas.producto_id INNER JOIN clientes ON clientes.client_id = ventas.client_id INNER JOIN users ON ventas.user_id = users.user_id" 
-    cursor.execute(query, )
+    query = """
+    SELECT
+    tiempo AS fecha,
+    ventas.venta_id,
+    ventas.user_id AS vendedor_id,
+    users.first_name as vendedor,
+    ventas.client_id,
+    (
+        SELECT
+            SUM(cantidad)
+        FROM
+            detalle_ventas
+        WHERE
+            venta_id = ventas.venta_id
+    ) AS cantidad,
+    (
+        SELECT
+            SUM(precio_v)
+        FROM
+            detalle_ventas
+        WHERE
+            venta_id = ventas.venta_id
+    ) AS precio_v,
+    clientes.email AS cliente
+FROM
+    ventas
+    INNER JOIN clientes ON clientes.client_id = ventas.client_id
+    INNER JOIN users ON ventas.user_id = users.user_id"""
+    cursor.execute(query)
     result = cursor.fetchall()
 
-    # productos = []
-    # for row in result:
-    #   product = {
-    #     "producto_id": row[0],
-    #     "producto": row[1],
-    #     "marca": row[2],
-    #     "stock": row[3],
-    #     "precio_v": row[4] * 1.25
-    #   }
-    #   productos.append(product)
+    ventas = []
+    for row in result:
+      venta = {
+        "fecha": row[0],
+        "venta_id": row[1],
+        "vendedor_id": row[2],
+        "vendedor": row[3],
+        "cient_id": row[4],
+        "cantidad": row[5],
+        "precio_v": row[6],
+        "email": row[7] 
+      }
+      ventas.append(venta)
 
-    # return jsonify(productos)
+    response = jsonify(ventas)
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
