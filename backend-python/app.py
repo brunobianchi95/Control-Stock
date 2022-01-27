@@ -12,6 +12,15 @@ connection = mysql.connector.connect(
   user="root",
   password="catalina"
 )
+
+# Solucion problema CORS
+@app.after_request # blueprint can also be app~~
+def after_request(response):
+    header = response.headers
+    header['Access-Control-Allow-Origin'] = '*'
+    header['Access-Control-Allow-Headers'] = '*'
+    header['Access-Control-Allow-Methods'] = '*'
+    return response
  
 
 # (connection, request) -> (ID, Bool, Error)
@@ -307,3 +316,94 @@ def getSellHistory():
     #   productos.append(product)
 
     # return jsonify(productos)
+
+
+# Chat
+
+
+@app.route('/api/messages/users', methods=["GET"])
+def getUserToMessages():
+    authId = utils.getAuthId(request)
+
+    if authId == None:
+      return {"error": "TEnes que estar loggeado"}, 403
+
+    cursor = connection.cursor()
+    query = "SELECT user_id, first_name, last_name, email FROM users WHERE user_id != (%s) " 
+    cursor.execute(query, (authId,))
+    result = cursor.fetchall()
+
+    users = []
+    for row in result:
+      user = {
+        "user_id": row[0],
+        "first_name": row[1],
+        "last_name": row[2],
+        "email": row[3],
+      }
+      users.append(user)
+
+    return jsonify(users)
+
+
+@app.route('/api/messages', methods=["GET"])
+def getMessages():
+    authId = utils.getAuthId(request)
+
+    if authId == None:
+      return {"error": "TEnes que estar loggeado"}, 403
+
+    cursor = connection.cursor()
+    query = "SELECT message_id, message, sender_id, receiver_id, is_read FROM messages WHERE sender_id = (%s) OR receiver_id = (%s)" 
+    cursor.execute(query, (authId, authId))
+    result = cursor.fetchall()
+    cursor.close()
+    messages = []
+    for row in result:
+      message = {
+        "message_id": row[0],
+        "message": row[1],
+        "sender_id": row[2],
+        "receiver_id": row[3],
+        "is_read": row[4] 
+      }
+      messages.append(message)
+
+
+    return jsonify(messages)
+
+
+
+@app.route('/api/messages', methods=["POST"])
+def sendMessage(): 
+    authId = utils.getAuthId(request)
+
+    if authId == None:
+      return {"error": "TEnes que estar loggeado"}, 403
+
+    receiver_id = request.json["receiver_id"]
+    message = request.json["message"]
+
+    if receiver_id == None or receiver_id == "":
+      return {"error": "Necesitamos un reciever_id"}, 400
+
+    if message == None or message == "":
+      return {"error": "No podes mandar un mensaje sin el message gil"}, 400
+
+
+
+    with connection.cursor() as cursor:
+      query = "INSERT INTO messages (message, sender_id, receiver_id, is_read) VALUES (%s, %s, %s, %s)"
+      cursor.execute(query, (message, authId, receiver_id, False))
+      connection.commit()
+
+      id = cursor.lastrowid
+
+      return { 
+        "message_id": id,
+        "message": message,
+        "sender_id": authId,
+        "receiver_id": receiver_id,
+        "is_read": False
+      }
+

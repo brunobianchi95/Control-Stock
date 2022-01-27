@@ -88,6 +88,17 @@ TABLES['clientes'] = (
     ") ENGINE=InnoDB")
 
 
+TABLES['messages'] = (
+    "CREATE TABLE messages ("
+    "  message_id int(11) NOT NULL AUTO_INCREMENT,"
+    "  sender_id int REFERENCES users(user_id) ON DELETE SET NULL,"
+    "  receiver_id int REFERENCES users(user_id) ON DELETE SET NULL,"
+    "  message TEXT NOT NULL,"
+    "  is_read BOOLEAN NOT NULL,"
+    "  PRIMARY KEY (message_id)"
+    ") ENGINE=InnoDB")
+
+
 try:
     cursor.execute("USE {}".format(DB_NAME))
 except mysql.connector.Error as err:
