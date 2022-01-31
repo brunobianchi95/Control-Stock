@@ -33,6 +33,7 @@ TABLES['users'] = (
     "  first_name TEXT NOT NULL,"
     "  last_name TEXT NOT NULL,"
     "  admin BOOLEAN NOT NULL,"
+    "  verified_email BOOLEAN NOT NULL,"
     "  PRIMARY KEY (user_id)"
     ") ENGINE=InnoDB")
 

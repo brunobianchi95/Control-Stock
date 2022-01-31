@@ -1,7 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, redirect, request, jsonify
 import index
 import utils
 import mysql.connector
+import sendgrid
+from sendgrid.helpers.mail import Content, Email, Mail
+import time
+
+sg = sendgrid.SendGridAPIClient(
+   "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"
+)
 
 app = Flask(__name__)
 
@@ -40,6 +47,65 @@ def isAdmin(connection, req):
     return int(adminId), False, ({"error": "no sos admin"}, 403)
 
 
+
+def send_verification_email(id: int, email: str) -> bool:
+    token = utils.encodeToken(id)
+    link = f"http://localhost:5000/api/verify_email/{token}"
+    message = Mail(
+      from_email='bianchi.b95@gmail.com',
+      to_emails=email,
+      subject='Sending with Twilio SendGrid is Fun',
+      html_content=f'Hola amigo, tenes que verificar tu email haciendo click <a href="{link}">aca</a>'
+    ) 
+    try:
+        sg.send(message)
+        return True
+    except Exception as e:
+        print(e.body)
+        return False
+
+
+def send_welcome_email(email: str) -> bool:
+    message = Mail(
+      from_email='bianchi.b95@gmail.com',
+      to_emails=email,
+      subject='Sending with Twilio SendGrid is Fun',
+      html_content='Hola amigo, bienvenido a your29'
+    ) 
+    try:
+        sg.send(message)
+        return True
+    except Exception as e:
+        print(e.body)
+        return False
+
+
+@app.route('/api/verify_email/<token>')
+def verify_email(token: str):
+
+  hour = 3600
+  try:
+    (id, tokenTime) = utils.decodeToken(token)
+    expiryTime = tokenTime + (hour * 24)
+    now = int(time.time())
+    if now > expiryTime:
+      return {"message": "token ya expiro"}, 400
+
+    with connection.cursor() as cursor:
+      cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (id,))
+      result = cursor.fetchone()
+      if result == None:
+        return {"message": "estas intentando verificar un user que no existe gil"}
+
+      with connection.cursor() as cursor:
+        cursor.execute("UPDATE users SET verified_email = true WHERE user_id = %s", (id,))
+        connection.commit()
+        return redirect("https://www.google.com.ar/")
+      
+  except:
+    return {"message": "fallo al decodificar el token"}
+
+
 # SIGNUP #
 @app.route("/api/signup", methods=["POST"])
 def register():
@@ -47,17 +113,31 @@ def register():
   lastName = request.json["lastName"]
   password = request.json["password"]
   email = request.json["email"]
+
+
+  hashedPassword = utils.hashPassword(password)
+
+
     
   with connection.cursor() as cursor:
-    query = "INSERT INTO users (email, password, first_name, last_name, admin) VALUES (%s, %s, %s, %s, %s)"
-    cursor.execute(query, (email, password, firstName, lastName, False))
+    query = "INSERT INTO users (email, password, first_name, last_name, admin, verified_email) VALUES (%s, %s, %s, %s, %s, %s)"
+    cursor.execute(query, (email, hashedPassword, firstName, lastName, False, False))
     connection.commit()
 
   with connection.cursor() as cursor:
     query = "SELECT user_id, email FROM users WHERE email=%s"
     cursor.execute(query, (email,))
     result = cursor.fetchone()
-    return {"id": result[0], "email": result[1]}
+    id = result[0]
+    email = result[1]
+
+    if send_welcome_email(email) == False:
+      print("Hubo un problema al enviar el email de bienvenida")
+    if send_verification_email(id, email) == False:
+      print("Hubo un problema al enviar el email de verificacion")
+
+    return {"id": id, "email": email}
+
 
 # LOGIN #
 @app.route("/api/login", methods=["POST"])
@@ -65,11 +145,16 @@ def login():
   email = request.json["email"]
   password = request.json["password"]
 
+  hashedPassword = utils.hashPassword(password)
+
   with connection.cursor() as cursor:
-    query = "SELECT user_id, email, password FROM users WHERE email=%s AND password=%s"
-    cursor.execute(query, (email, password))
+    query = "SELECT user_id, password FROM users WHERE email=%s"
+    cursor.execute(query, (email,))
     result = cursor.fetchone()
-    if result[1] == email and result[2] == password:
+
+    dbPassword = result[1]
+
+    if dbPassword == hashedPassword:
       token = utils.encodeToken(result[0])
       return {"token":token}
     return {"mensaje":"Usuario o contraseña incorrecto"}, 400
